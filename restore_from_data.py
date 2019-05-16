@@ -2,6 +2,10 @@ import argparse
 from enum import IntEnum
 from typing import Tuple
 
+from progressbar import ProgressBar
+
+ROW = 8
+COLUMN = 8
 TABLE = {'A': '8', 'B': '4', 'C': '2', 'D': '1', 'E': '8', 'F': '4', 'G': '2', 'H': '1',
          '1': 0, '2': 1, '3': 2, '4': 3, '5': 4, '6': 5, '7': 6, '8': 7, }
 
@@ -136,12 +140,51 @@ def reverse(next_move: int,
             current_black: int,
             current_white: int,
             reversible_mask: int
-            ) -> int:
+            ) -> Tuple[int, int]:
     _mask = reversible_mask ^ next_move
     if is_black:
         return current_black ^ _mask, current_white ^ reversible_mask
     else:
         return current_black ^ reversible_mask, current_white ^ _mask
+
+
+""" flip, mirror, and rotate
+
+https://www.chessprogramming.org/Flipping_Mirroring_and_Rotating
+use flip vertically, horizontally, and diagonally 
+"""
+
+
+def fv(bits: int
+       ) -> int:
+    bits = (bits << 56) & 0xffffffffffffffff\
+           | (bits << 40) & 0x00ff000000000000 \
+           | (bits << 24) & 0x0000ff0000000000 \
+           | (bits << 8) & 0x000000ff00000000 \
+           | (bits >> 8) & 0x00000000ff000000 \
+           | (bits >> 24) & 0x0000000000ff0000 \
+           | (bits >> 40) & 0x000000000000ff00 \
+           | (bits >> 56) & 0x00000000000000ff
+    return bits
+
+
+def fh(bits: int
+       ) -> int:
+    bits = ((bits >> 1) & 0x5555555555555555) + 2 * (bits & 0x5555555555555555)
+    bits = ((bits >> 2) & 0x3333333333333333) + 4 * (bits & 0x3333333333333333)
+    bits = ((bits >> 4) & 0x0f0f0f0f0f0f0f0f) + 16 * (bits & 0x0f0f0f0f0f0f0f0f)
+    return bits
+
+
+def fd(bits: int
+       ) -> int:
+    temp = 0x0f0f0f0f00000000 & (bits ^ (bits << 28))
+    bits ^= temp ^ (temp >> 28)
+    temp = 0x3333000033330000 & (bits ^ (bits << 14))
+    bits ^= temp ^ (temp >> 14)
+    temp = 0x5500550055005500 & (bits ^ (bits << 7))
+    bits ^= temp ^ (temp >> 7)
+    return bits
 
 
 # for debug
@@ -173,7 +216,10 @@ def main():
 
     invalid_count = 0
     records = []
-    for line in lines:
+    bar = ProgressBar(0, len(lines))
+
+    for i, line in enumerate(lines):
+        bar.update(i)
         current_black = 0x0000000810000000
         current_white = 0x0000001008000000
         is_black = True
@@ -193,6 +239,9 @@ def main():
                 
                 print(format(valid('B', initial_black, initial_white), '016x'))
                 print_board(current_black, current_white)
+                print_board(fv(fh(current_black)), fv(fh(current_white)))
+                print_board(fd(current_black), fd(current_white))
+                print_board(fv(fh(fd(current_black))), fv(fh(fd(current_white))))
                 """
             else:
                 invalid_count += 1
@@ -203,8 +252,52 @@ def main():
 
     with open(args.STATE, "w") as sta, open(args.ACTION, "w") as act:
         for record in records:
-            sta.write(record[0] + ' '.join([str(b) + ' ' + str(w) for b, w, _ in record[1:]]) + '\n')
-            act.write(record[0] + ' '.join([str(b) + ' ' + str(w) for b, w, _ in record[1:]]) + '\n')
+            sta.write(record[0] +
+                      ' '.join([format(b, '016x') + ' ' +
+                                format(w, '016x') for b, w, _ in record[1:]])
+                      + '\n')
+            act.write(record[0] +
+                      ' '.join([format(n, '016x') for _, _, n in record[1:]])
+                      + '\n')
+        else:
+            sta.write('<SEP>\n')
+            act.write('<SEP>\n')
+
+        for record in records:
+            sta.write(record[0] +
+                      ' '.join([format(fv(fh(b)), '016x') + ' ' +
+                                format(fv(fh(w)), '016x') for b, w, _ in record[1:]])
+                      + '\n')
+            act.write(record[0] +
+                      ' '.join([format(fv(fh(n)), '016x') for _, _, n in record[1:]])
+                      + '\n')
+        else:
+            sta.write('<SEP>\n')
+            act.write('<SEP>\n')
+
+        for record in records:
+            sta.write(record[0] +
+                      ' '.join([format(fd(b), '016x') + ' ' +
+                                format(fd(w), '016x') for b, w, _ in record[1:]])
+                      + '\n')
+            act.write(record[0] +
+                      ' '.join([format(fd(n), '016x') for _, _, n in record[1:]])
+                      + '\n')
+        else:
+            sta.write('<SEP>\n')
+            act.write('<SEP>\n')
+
+        for record in records:
+            sta.write(record[0] +
+                      ' '.join([format(fv(fh(fd(b))), '016x') + ' ' +
+                                format(fv(fh(fd(w))), '016x') for b, w, _ in record[1:]])
+                      + '\n')
+            act.write(record[0] +
+                      ' '.join([format(fv(fh(fd(n))), '016x') for _, _, n in record[1:]])
+                      + '\n')
+        else:
+            sta.write('<SEP>\n')
+            act.write('<SEP>\n')
 
 
 if __name__ == '__main__':
