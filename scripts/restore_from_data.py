@@ -6,6 +6,7 @@ from progressbar import ProgressBar
 
 ROW = 8
 COLUMN = 8
+PASS = 0
 TABLE = {'A': '8', 'B': '4', 'C': '2', 'D': '1', 'E': '8', 'F': '4', 'G': '2', 'H': '1',
          '1': 0, '2': 1, '3': 2, '4': 3, '5': 4, '6': 5, '7': 6, '8': 7, }
 
@@ -157,7 +158,7 @@ use flip vertically, horizontally, and diagonally
 
 def fv(bits: int
        ) -> int:
-    bits = (bits << 56) & 0xffffffffffffffff\
+    bits = (bits << 56) & 0xffffffffffffffff \
            | (bits << 40) & 0x00ff000000000000 \
            | (bits << 24) & 0x0000ff0000000000 \
            | (bits << 8) & 0x000000ff00000000 \
@@ -207,8 +208,7 @@ def print_board(current_black: int,
 def main():
     parser = argparse.ArgumentParser(description='restore a othello game')
     parser.add_argument('INPUT', help='path to input data')
-    parser.add_argument('STATE', help='path to output data of states')
-    parser.add_argument('ACTION', help='path to output data of actions')
+    parser.add_argument('OUTPUT', help='path to output data of states')
     args = parser.parse_args()
 
     with open(args.INPUT, "r") as inp:
@@ -218,23 +218,25 @@ def main():
     records = []
     bar = ProgressBar(0, len(lines))
 
-    for i, line in enumerate(lines):
-        bar.update(i)
+    print('*** now restoring ... ***')
+    for j, line in enumerate(lines):
+        bar.update(j)
         current_black = 0x0000000810000000
         current_white = 0x0000001008000000
         is_black = True
         buffer = [line[0]]  # line[0] == winner
-        for move in line[1:]:
+        for i, move in enumerate(line[1:]):
             next_move = translate(move)
             if next_move == 'PA':
+                assert valid(is_black, current_black, current_white) == 0
+                buffer.append((current_black, current_white, PASS))
                 is_black = not is_black
-                buffer.append((current_black, current_white, next_move))
             elif next_move & valid(is_black, current_black, current_white) > 0:
+                buffer.append((current_black, current_white, next_move))
                 reversible_mask = reversible(next_move, is_black, current_black, current_white)
                 current_black, current_white = \
                     reverse(next_move, is_black, current_black, current_white, reversible_mask)
                 is_black = not is_black
-                buffer.append((current_black, current_white, next_move))
                 """ for debug
                 
                 print(format(valid('B', initial_black, initial_white), '016x'))
@@ -250,54 +252,43 @@ def main():
         else:
             records.append(buffer)
 
-    with open(args.STATE, "w") as sta, open(args.ACTION, "w") as act:
+    print('*** begin to write ... ***')
+    with open(args.OUTPUT, "w") as out:
         for record in records:
-            sta.write(record[0] +
-                      ' '.join([format(b, '016x') + ' ' +
-                                format(w, '016x') for b, w, _ in record[1:]])
-                      + '\n')
-            act.write(record[0] +
-                      ' '.join([format(n, '016x') for _, _, n in record[1:]])
-                      + '\n')
-        else:
-            sta.write('<SEP>\n')
-            act.write('<SEP>\n')
+            winner = record[0]
+            source = record[1::2] if winner == 'B' else record[2::2]
+            for b, w, n in source:
+                out.write(format(b, '064b') + ' ' +
+                          format(w, '064b') + ' ' +
+                          winner + ' ' +
+                          str(format(n, '064b').find('1')) + '\n')
 
         for record in records:
-            sta.write(record[0] +
-                      ' '.join([format(fv(fh(b)), '016x') + ' ' +
-                                format(fv(fh(w)), '016x') for b, w, _ in record[1:]])
-                      + '\n')
-            act.write(record[0] +
-                      ' '.join([format(fv(fh(n)), '016x') for _, _, n in record[1:]])
-                      + '\n')
-        else:
-            sta.write('<SEP>\n')
-            act.write('<SEP>\n')
+            winner = record[0]
+            source = record[1::2] if record[0] == 'B' else record[2::2]
+            for b, w, n in source:
+                out.write(format(fv(fh(b)), '064b') + ' ' +
+                          format(fv(fh(w)), '064b') + ' ' +
+                          winner + ' ' +
+                          str(format(fv(fh(n)), '064b').find('1')) + '\n')
 
         for record in records:
-            sta.write(record[0] +
-                      ' '.join([format(fd(b), '016x') + ' ' +
-                                format(fd(w), '016x') for b, w, _ in record[1:]])
-                      + '\n')
-            act.write(record[0] +
-                      ' '.join([format(fd(n), '016x') for _, _, n in record[1:]])
-                      + '\n')
-        else:
-            sta.write('<SEP>\n')
-            act.write('<SEP>\n')
+            winner = record[0]
+            source = record[1::2] if record[0] == 'B' else record[2::2]
+            for b, w, n in source:
+                out.write(format(fd(b), '064b') + ' ' +
+                          format(fd(w), '064b') + ' ' +
+                          winner + ' ' +
+                          str(format(fd(n), '064b').find('1')) + '\n')
 
         for record in records:
-            sta.write(record[0] +
-                      ' '.join([format(fv(fh(fd(b))), '016x') + ' ' +
-                                format(fv(fh(fd(w))), '016x') for b, w, _ in record[1:]])
-                      + '\n')
-            act.write(record[0] +
-                      ' '.join([format(fv(fh(fd(n))), '016x') for _, _, n in record[1:]])
-                      + '\n')
-        else:
-            sta.write('<SEP>\n')
-            act.write('<SEP>\n')
+            winner = record[0]
+            source = record[1::2] if record[0] == 'B' else record[2::2]
+            for b, w, n in source:
+                out.write(format(fv(fh(fd(b))), '064b') + ' ' +
+                          format(fv(fh(fd(w))), '064b') + ' ' +
+                          winner + ' ' +
+                          str(format(fv(fh(fd(n))), '064b').find('1')) + '\n')
 
 
 if __name__ == '__main__':

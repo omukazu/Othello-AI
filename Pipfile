@@ -5,10 +5,12 @@ verify_ssl = true
 
 [dev-packages]
 ipython = "*"
+cupy = "*"
 
 [packages]
 chainer = "*"
 progressbar2 = "*"
+numpy = "*"
 
 [requires]
 python_version = "3.6"
