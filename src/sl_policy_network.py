@@ -1,11 +1,13 @@
 from enum import IntEnum
-from typing import Tuple
+from typing import Any, Tuple
 
 import chainer
 import chainer.functions as F
+import numpy as np
 from chainer import Chain
+from chainer.backends import cuda
 
-from constants import ROW, COLUMN, HORIZONTAL_MASK, VERTICAL_MASK, SQUARE_MASK, Direction
+from constants import HORIZONTAL_MASK, VERTICAL_MASK, SQUARE_MASK, Direction
 from model_components import InputLayer, ResNet, OutputLayer
 
 
@@ -27,9 +29,9 @@ class SLPolicyNetwork(Chain):
         super(SLPolicyNetwork, self).__init__(**links)
 
     def __call__(self,
-                 states: chainer.Variable,   # (b, n_input_channel, ROW, COLUMN)
-                 actions: chainer.Variable,  # (b, 1)
-                 ):
+                 states: Any,   # (b, n_input_channel, ROW, COLUMN)
+                 actions: Any,  # (b, 1)
+                 ) -> Any:
         h = self.layer1(states)     # (b, n_input_channel, ROW, COLUMN)
         h = self.layer2(h)
         h = self.layer3(h)
@@ -40,81 +42,15 @@ class SLPolicyNetwork(Chain):
         h = self.layer8(h)
         h = self.layer9(h)
         policies = self.layer10(h)  # (b, ROW * COLUMN + 1)
+        """ NOTE: in training step, the model does not use valid_mask
+        
         valid_mask = self.valid_moves(states)
         policies += valid_mask
+        """
         loss = F.softmax_cross_entropy(policies, actions)
         accuracy = F.accuracy(policies, actions)
         chainer.report({'loss': loss, 'accuracy': accuracy}, self)
         return loss
-
-    def valid_moves(self,
-                    states: chainer.Variable  # (b, n_input_channel, ROW, COLUMN)
-                    ) -> chainer.Variable:
-        b = len(states)
-        black_channels = [int(''.join(map(str, channels[0].flatten().astype('int'))), 2) for channels in states]
-        white_channels = [int(''.join(map(str, channels[1].flatten().astype('int'))), 2) for channels in states]
-        moves = [True if channels[2][0][0] == 1. else False for channels in states]
-
-        valid_mask = self.xp.zeros((b, ROW * COLUMN + 1), 'f')
-        for i in range(b):
-            valid = self.valid_move(black_channels[i], white_channels[i], moves[i])
-            valid = self.xp.array(list(format(valid, '064b')), 'f')   # (64)
-            if any(valid):  # in the case that there is at least one valid move
-                valid = self.xp.concatenate((valid, self.xp.array([0.])), axis=0)  # (65)
-            else:
-                valid = self.xp.concatenate((valid, self.xp.array([1.])), axis=0)  # (65)
-            # impose a penalty where the mask value is 0
-            valid_mask[i] = ~(valid.astype('bool')) * -1e6
-        return valid_mask
-
-    def valid_move(self,
-                   black: int,
-                   white: int,
-                   is_black: bool
-                   ) -> int:
-        player, opponent = self.which_turn(black, white, is_black)
-        blank = ~(black | white)
-        h = opponent & HORIZONTAL_MASK
-        v = opponent & VERTICAL_MASK
-        s = opponent & SQUARE_MASK
-        valid = self._valid_move(player, v, blank, Direction.LEFT)
-        valid |= self._valid_move(player, s, blank, Direction.UPPERLEFT)
-        valid |= self._valid_move(player, h, blank, Direction.UP)
-        valid |= self._valid_move(player, s, blank, Direction.UPPERRIGHT)
-        return valid
-
-    @staticmethod
-    def _valid_move(player: int,
-                    masked_opponent: int,
-                    blank: int,
-                    direction: IntEnum
-                    ) -> int:
-        # move to the direction step by step
-        one = masked_opponent & (player << direction)
-        one |= masked_opponent & (one << direction)
-        one |= masked_opponent & (one << direction)
-        one |= masked_opponent & (one << direction)
-        one |= masked_opponent & (one << direction)
-        one |= masked_opponent & (one << direction)
-        one_valid_mask = blank & (one << direction)
-
-        the_other = masked_opponent & (player >> direction)
-        the_other |= masked_opponent & (the_other >> direction)
-        the_other |= masked_opponent & (the_other >> direction)
-        the_other |= masked_opponent & (the_other >> direction)
-        the_other |= masked_opponent & (the_other >> direction)
-        the_other |= masked_opponent & (the_other >> direction)
-        the_other_valid_mask = blank & (the_other >> direction)
-        return one_valid_mask | the_other_valid_mask
-
-    @staticmethod
-    def which_turn(black: int,
-                   white: int,
-                   is_black: bool
-                   ) -> Tuple[int, int]:
-        player = black if is_black else white
-        opponent = white if is_black else black
-        return player, opponent
 
     def predict(self,
                 states: chainer.Variable  # (b, n_input_channel, ROW, COLUMN)
@@ -134,3 +70,79 @@ class SLPolicyNetwork(Chain):
             policies += valid_mask
             prediction = self.xp.argmax(policies.data, axis=1)
             return prediction
+
+    def valid_moves(self,
+                    states: Any  # (b, n_input_channel, ROW, COLUMN)
+                    ) -> Any:
+        b = len(states)
+        black_channels = self.xp.array([int(''.join(map(str, channels[0].flatten().astype('int'))), 2)
+                                        for channels in states], dtype='uint64')                        # (b, 1)
+        white_channels = self.xp.array([int(''.join(map(str, channels[1].flatten().astype('int'))), 2)
+                                        for channels in states], dtype='uint64')                        # (b, 1)
+        is_blacks = self.xp.array([True if channels[2][0][0] == 1. else False for channels in states])  # (b, 1)
+
+        hex_valid_mask = self.valid_move(black_channels, white_channels, is_blacks)
+        # (b, 1) -> (b, ROW * COLUMN)
+        bin_valid_mask = self.xp.array(
+            list(map(lambda x: list(self.xp.binary_repr(cuda.to_cpu(x), width=64)), hex_valid_mask)), 'f')
+        pass_mask = self.xp.logical_not(self.xp.any(bin_valid_mask, axis=1, keepdims=-1)).astype(float)
+        if self.xp != np:
+            cuda.to_gpu(pass_mask)
+        valid_mask = self.xp.logical_not(
+            self.xp.concatenate([bin_valid_mask, pass_mask], axis=-1).astype('bool')) * -1e6
+        return valid_mask
+
+    def valid_move(self,
+                   blacks: Any,     # (b, 1), numpy.ndarray or cupy.core.core.ndarray
+                   whites: Any,     # (b, 1), numpy.ndarray or cupy.core.core.ndarray
+                   is_blacks: Any,  # (b, 1), numpy.ndarray or cupy.core.core.ndarray
+                   ) -> Any:
+        player, opponent = self.which_turns(blacks, whites, is_blacks)
+        blank = self.xp.invert(self.xp.bitwise_or(blacks, whites))
+        h = self.xp.bitwise_and(opponent, HORIZONTAL_MASK)
+        v = self.xp.bitwise_and(opponent, VERTICAL_MASK)
+        s = self.xp.bitwise_and(opponent, SQUARE_MASK)
+        valid = self._valid_move(player, v, blank, Direction.LEFT)
+        valid = self.xp.bitwise_or(valid, self._valid_move(player, s, blank, Direction.UPPERLEFT))
+        valid = self.xp.bitwise_or(valid, self._valid_move(player, h, blank, Direction.UP))
+        valid = self.xp.bitwise_or(valid, self._valid_move(player, s, blank, Direction.UPPERRIGHT))
+        return valid
+
+    def _valid_move(self,
+                    player: Any,           # (b, 1), numpy.ndarray or cupy.core.core.ndarray
+                    masked_opponent: Any,  # (b, 1), numpy.ndarray or cupy.core.core.ndarray
+                    blank: Any,            # (b, 1), numpy.ndarray or cupy.core.core.ndarray
+                    direction: IntEnum
+                    ) -> Any:
+        temp = int(direction)
+        # move to the direction step by step
+        one = self.xp.bitwise_and(masked_opponent, self.xp.left_shift(player, temp))
+        one = self.xp.bitwise_or(one, self.xp.bitwise_and(masked_opponent, self.xp.left_shift(one, temp)))
+        one = self.xp.bitwise_or(one, self.xp.bitwise_and(masked_opponent, self.xp.left_shift(one, temp)))
+        one = self.xp.bitwise_or(one, self.xp.bitwise_and(masked_opponent, self.xp.left_shift(one, temp)))
+        one = self.xp.bitwise_or(one, self.xp.bitwise_and(masked_opponent, self.xp.left_shift(one, temp)))
+        one = self.xp.bitwise_or(one, self.xp.bitwise_and(masked_opponent, self.xp.left_shift(one, temp)))
+        one_valid_mask = self.xp.bitwise_and(blank, self.xp.left_shift(one, temp))
+
+        the_other = self.xp.bitwise_and(masked_opponent, self.xp.right_shift(player, temp))
+        the_other = self.xp.bitwise_or(
+            the_other, self.xp.bitwise_and(masked_opponent, self.xp.right_shift(the_other, temp)))
+        the_other = self.xp.bitwise_or(
+            the_other, self.xp.bitwise_and(masked_opponent, self.xp.right_shift(the_other, temp)))
+        the_other = self.xp.bitwise_or(
+            the_other, self.xp.bitwise_and(masked_opponent, self.xp.right_shift(the_other, temp)))
+        the_other = self.xp.bitwise_or(
+            the_other, self.xp.bitwise_and(masked_opponent, self.xp.right_shift(the_other, temp)))
+        the_other = self.xp.bitwise_or(
+            the_other, self.xp.bitwise_and(masked_opponent, self.xp.right_shift(the_other, temp)))
+        the_other_valid_mask = self.xp.bitwise_and(blank, self.xp.right_shift(the_other, temp))
+        return self.xp.bitwise_or(one_valid_mask, the_other_valid_mask)
+
+    def which_turns(self,
+                    blacks: Any,    # (b, 1), numpy.ndarray or cupy.core.core.ndarray
+                    whites: Any,    # (b, 1), numpy.ndarray or cupy.core.core.ndarray
+                    is_blacks: Any  # (b, 1), numpy.ndarray or cupy.core.core.ndarray
+                    ) -> Tuple[Any, Any]:
+        player = blacks * is_blacks + whites * self.xp.invert(is_blacks)
+        opponent = blacks * self.xp.invert(is_blacks) + whites * is_blacks
+        return player, opponent

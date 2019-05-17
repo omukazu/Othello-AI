@@ -6,8 +6,8 @@ import chainer
 from chainer import iterators, training
 from chainer.backends import cuda
 from chainer.training import extensions
-
 import numpy as np
+
 from sl_policy_network import SLPolicyNetwork
 from utils import load_data, print_board
 
@@ -62,13 +62,18 @@ def main():
         print(f'action : {action}')
         print(f'prediction : {prediction}')
 
+    @chainer.training.make_extension()
+    def print_iter(_):
+        print(f'*** iterate ***')
+
     trainer.extend(predict_next_move, trigger=(1, 'epoch'))
+    trainer.extend(print_iter, trigger=(1, 'iteration'))
 
     trainer.extend(extensions.Evaluator(valid_iter, model, device=args.gpu))
     trainer.extend(extensions.LogReport())
     trainer.extend(extensions.PrintReport(['epoch', 'main/loss', 'main/accuracy',
                                            'validation/main/loss', 'validation/main/accuracy', 'elapsed_time']))
-    trainer.extend(extensions.snapshot_object(model, 'slpn.epoch{.updater.epoch}.npz'),trigger=(10, 'epoch'))
+    trainer.extend(extensions.snapshot_object(model, 'slpn.epoch{.updater.epoch}.npz'), trigger=(10, 'epoch'))
     save_trigger_for_accuracy = chainer.training.triggers.MaxValueTrigger(key='validation/main/accuracy',
                                                                           trigger=(1, 'epoch'))
     trainer.extend(extensions.snapshot_object(model, 'slpn.best_accuracy.npz'), trigger=save_trigger_for_accuracy)

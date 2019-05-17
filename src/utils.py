@@ -1,6 +1,7 @@
 from typing import List, Tuple
 
 import numpy as np
+from progressbar import ProgressBar
 
 from constants import ROW, COLUMN
 
@@ -19,10 +20,10 @@ def load_data(path: str
               ) -> List[Tuple]:
     with open(path, "r") as f:
         data = [line.strip().split() for line in f]
+    bar = ProgressBar(0, len(data))
     # (state, action)
-    return [(transform(b, w, is_black),
-             np.array(64 if n == -1 else int(n), dtype='int32'))
-            for b, w, is_black, n in data]
+    return [(transform(b, w, is_black), np.array(64 if n == -1 else int(n), dtype='int32'))
+            for b, w, is_black, n in bar(data)]
 
 
 def print_board(states: np.array  # (3, 8, 8)

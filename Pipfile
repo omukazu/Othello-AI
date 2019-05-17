@@ -11,6 +11,7 @@ cupy = "*"
 chainer = "*"
 progressbar2 = "*"
 numpy = "*"
+cupy = "*"
 
 [requires]
 python_version = "3.6"
