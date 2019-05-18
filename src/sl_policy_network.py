@@ -5,7 +5,7 @@ import chainer
 import chainer.functions as F
 from chainer import Chain
 
-from constants import HORIZONTAL_MASK, VERTICAL_MASK, SQUARE_MASK, Direction, MASK
+from constants import ROW, COLUMN, HORIZONTAL_MASK, VERTICAL_MASK, SQUARE_MASK, Direction, MASK
 from model_components import InputLayer, ResNet, OutputLayer
 
 
@@ -16,7 +16,6 @@ class SLPolicyNetwork(Chain):
                  ) -> None:
         self.n_input_channel = n_input_channel
         self.n_output_channel = n_output_channel
-        self.board_size = 8
 
         self._reversed_indices = None
         self._bin_mask = None
@@ -51,15 +50,17 @@ class SLPolicyNetwork(Chain):
         chainer.report({'loss': loss, 'accuracy': accuracy}, self)
         return loss
 
-    def _set_cache(self):
-        self._reversed_indices = (self.xp.ones((1, 64), dtype='uint64').cumsum(axis=1) - 1)[:, ::-1]  # (1, 64)
-        self._bin_mask = self.xp.left_shift(self.xp.ones((1, 64), dtype='uint64'),
-                                            (self.xp.ones((1, 64), dtype='uint64').cumsum(axis=1) - 1)[:, ::-1])
+    def set_cache(self):
+        self._reversed_indices = (self.xp.ones((1, ROW * COLUMN), dtype='uint64').cumsum(axis=1) - 1)[:, ::-1]
+        self._bin_mask = self.xp.left_shift(
+            self.xp.ones((1, ROW * COLUMN), dtype='uint64'),
+            (self.xp.ones((1, ROW * COLUMN), dtype='uint64').cumsum(axis=1) - 1)[:, ::-1])
 
     def valid_moves(self,
                     states: Any  # (b, n_input_channel, ROW, COLUMN)
                     ) -> Any:
         b = len(states)
+
         black_masks = states[:, 0, :, :].reshape(b, -1).astype('uint64')                      # (b, 64)
         black_channels = self.xp.left_shift(black_masks, self._reversed_indices).sum(axis=1)  # (b, )
         white_masks = states[:, 1, :, :].reshape(b, -1).astype('uint64')                      # (b, 64)

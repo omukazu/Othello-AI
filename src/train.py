@@ -42,7 +42,7 @@ def main():
     if args.gpu >= 0:
         chainer.backends.cuda.get_device_from_id(args.gpu).use()
         model.to_gpu(args.gpu)
-    model._set_cache()
+    model.set_cache()
 
     optimizer = chainer.optimizers.Adam(alpha=config["arguments"]["learning_rate"])
     optimizer.setup(model)

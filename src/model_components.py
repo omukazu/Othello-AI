@@ -11,7 +11,7 @@ class InputLayer(Chain):
                  n_input_channel: int,
                  n_output_channel: int,
                  kernel_size: int = 3,
-                 pad: int = 1
+                 pad: int = 1  # padding width
                  ) -> None:
         super(InputLayer, self).__init__()
         with self.init_scope():

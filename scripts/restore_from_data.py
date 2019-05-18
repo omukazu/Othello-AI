@@ -149,6 +149,16 @@ def reverse(next_move: int,
         return current_black ^ reversible_mask, current_white ^ _mask
 
 
+def count_flags(bits: int
+                ) -> int:
+    bits = (bits & 0x5555555555555555) + (bits >> 1 & 0x5555555555555555)
+    bits = (bits & 0x3333333333333333) + (bits >> 2 & 0x3333333333333333)
+    bits = (bits & 0x0f0f0f0f0f0f0f0f) + (bits >> 4 & 0x0f0f0f0f0f0f0f0f)
+    bits = (bits & 0x00ff00ff00ff00ff) + (bits >> 8 & 0x00ff00ff00ff00ff)
+    bits = (bits & 0x0000ffff0000ffff) + (bits >> 16 & 0x0000ffff0000ffff)
+    return (bits & 0x00000000ffffffff) + (bits >> 32 & 0x00000000ffffffff)
+
+
 """ flip, mirror, and rotate
 
 https://www.chessprogramming.org/Flipping_Mirroring_and_Rotating
@@ -232,7 +242,8 @@ def main():
                 buffer.append((current_black, current_white, PASS))
                 is_black = not is_black
             elif next_move & valid(is_black, current_black, current_white) > 0:
-                buffer.append((current_black, current_white, next_move))
+                if count_flags(valid(is_black, current_black, current_white)) > 1:
+                    buffer.append((current_black, current_white, next_move))
                 reversible_mask = reversible(next_move, is_black, current_black, current_white)
                 current_black, current_white = \
                     reverse(next_move, is_black, current_black, current_white, reversible_mask)
