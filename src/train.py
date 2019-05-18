@@ -37,10 +37,12 @@ def main():
     print('*** preparing model ***')
     n_input_channel = config["arguments"]["n_input_channel"]
     n_output_channel = config["arguments"]["n_output_channel"]
-    model = SLPolicyNetwork(n_input_channel=n_input_channel, n_output_channel=n_output_channel)
+    model = SLPolicyNetwork(n_input_channel=n_input_channel,
+                            n_output_channel=n_output_channel)
     if args.gpu >= 0:
         chainer.backends.cuda.get_device_from_id(args.gpu).use()
         model.to_gpu(args.gpu)
+    model._set_cache()
 
     optimizer = chainer.optimizers.Adam(alpha=config["arguments"]["learning_rate"])
     optimizer.setup(model)
@@ -64,10 +66,10 @@ def main():
 
     @chainer.training.make_extension()
     def print_iter(_):
-        print(f'*** iterate ***')
+        print(f'*** 100 iterate ***')
 
     trainer.extend(predict_next_move, trigger=(1, 'epoch'))
-    trainer.extend(print_iter, trigger=(1, 'iteration'))
+    trainer.extend(print_iter, trigger=(100, 'iteration'))
 
     trainer.extend(extensions.Evaluator(valid_iter, model, device=args.gpu))
     trainer.extend(extensions.LogReport())

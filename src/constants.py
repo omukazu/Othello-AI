@@ -6,6 +6,7 @@ COLUMN = 8
 HORIZONTAL_MASK = 0x00ffffffffffff00
 VERTICAL_MASK = 0x7e7e7e7e7e7e7e7e
 SQUARE_MASK = 0x007e7e7e7e7e7e00
+MASK = -1e6
 
 
 class Direction(IntEnum):
