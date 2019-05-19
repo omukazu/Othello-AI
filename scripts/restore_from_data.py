@@ -85,6 +85,16 @@ def _valid(player: int,
     return one_valid_mask | the_other_valid_mask
 
 
+def count_flags(bits: int
+                ) -> int:
+    bits = (bits & 0x5555555555555555) + (bits >> 1 & 0x5555555555555555)
+    bits = (bits & 0x3333333333333333) + (bits >> 2 & 0x3333333333333333)
+    bits = (bits & 0x0f0f0f0f0f0f0f0f) + (bits >> 4 & 0x0f0f0f0f0f0f0f0f)
+    bits = (bits & 0x00ff00ff00ff00ff) + (bits >> 8 & 0x00ff00ff00ff00ff)
+    bits = (bits & 0x0000ffff0000ffff) + (bits >> 16 & 0x0000ffff0000ffff)
+    return (bits & 0x00000000ffffffff) + (bits >> 32 & 0x00000000ffffffff)
+
+
 def reversible(next_move: int,
                is_black: bool,
                current_black: int,
@@ -149,20 +159,10 @@ def reverse(next_move: int,
         return current_black ^ reversible_mask, current_white ^ _mask
 
 
-def count_flags(bits: int
-                ) -> int:
-    bits = (bits & 0x5555555555555555) + (bits >> 1 & 0x5555555555555555)
-    bits = (bits & 0x3333333333333333) + (bits >> 2 & 0x3333333333333333)
-    bits = (bits & 0x0f0f0f0f0f0f0f0f) + (bits >> 4 & 0x0f0f0f0f0f0f0f0f)
-    bits = (bits & 0x00ff00ff00ff00ff) + (bits >> 8 & 0x00ff00ff00ff00ff)
-    bits = (bits & 0x0000ffff0000ffff) + (bits >> 16 & 0x0000ffff0000ffff)
-    return (bits & 0x00000000ffffffff) + (bits >> 32 & 0x00000000ffffffff)
-
-
 """ flip, mirror, and rotate
 
-https://www.chessprogramming.org/Flipping_Mirroring_and_Rotating
-use flip vertically, horizontally, and diagonally 
+refer to https://www.chessprogramming.org/Flipping_Mirroring_and_Rotating
+To obtain a rotated or mirrored board, we use flip vertically, horizontally, and diagonally 
 """
 
 
@@ -221,6 +221,12 @@ def main():
     parser.add_argument('OUTPUT', help='path to output data of states')
     args = parser.parse_args()
 
+    """ short description
+    
+    Replay a game based on board and move pairs.
+    To calculate faster, we use bitboard.
+    """
+
     with open(args.INPUT, "r") as inp:
         lines = [line.strip().split() for line in inp]
 
@@ -242,8 +248,7 @@ def main():
                 buffer.append((current_black, current_white, PASS))
                 is_black = not is_black
             elif next_move & valid(is_black, current_black, current_white) > 0:
-                if count_flags(valid(is_black, current_black, current_white)) > 1:
-                    buffer.append((current_black, current_white, next_move))
+                buffer.append((current_black, current_white, next_move))
                 reversible_mask = reversible(next_move, is_black, current_black, current_white)
                 current_black, current_white = \
                     reverse(next_move, is_black, current_black, current_white, reversible_mask)
@@ -267,39 +272,27 @@ def main():
     with open(args.OUTPUT, "w") as out:
         for record in records:
             winner = record[0]
+            is_black = True if winner == 'B' else False
             source = record[1::2] if winner == 'B' else record[2::2]
             for b, w, n in source:
-                out.write(format(b, '064b') + ' ' +
-                          format(w, '064b') + ' ' +
-                          winner + ' ' +
-                          str(format(n, '064b').find('1')) + '\n')
-
-        for record in records:
-            winner = record[0]
-            source = record[1::2] if record[0] == 'B' else record[2::2]
-            for b, w, n in source:
-                out.write(format(fv(fh(b)), '064b') + ' ' +
-                          format(fv(fh(w)), '064b') + ' ' +
-                          winner + ' ' +
-                          str(format(fv(fh(n)), '064b').find('1')) + '\n')
-
-        for record in records:
-            winner = record[0]
-            source = record[1::2] if record[0] == 'B' else record[2::2]
-            for b, w, n in source:
-                out.write(format(fd(b), '064b') + ' ' +
-                          format(fd(w), '064b') + ' ' +
-                          winner + ' ' +
-                          str(format(fd(n), '064b').find('1')) + '\n')
-
-        for record in records:
-            winner = record[0]
-            source = record[1::2] if record[0] == 'B' else record[2::2]
-            for b, w, n in source:
-                out.write(format(fv(fh(fd(b))), '064b') + ' ' +
-                          format(fv(fh(fd(w))), '064b') + ' ' +
-                          winner + ' ' +
-                          str(format(fv(fh(fd(n))), '064b').find('1')) + '\n')
+                # do not include the action 'PASS' or the case that there's only one valid move
+                if count_flags(valid(is_black, b, w)) > 1:
+                    out.write(format(b, '064b') + ' ' +
+                              format(w, '064b') + ' ' +
+                              winner + ' ' +
+                              str(format(n, '064b').find('1')) + '\n')
+                    out.write(format(fv(fh(b)), '064b') + ' ' +
+                              format(fv(fh(w)), '064b') + ' ' +
+                              winner + ' ' +
+                              str(format(fv(fh(n)), '064b').find('1')) + '\n')
+                    out.write(format(fd(b), '064b') + ' ' +
+                              format(fd(w), '064b') + ' ' +
+                              winner + ' ' +
+                              str(format(fd(n), '064b').find('1')) + '\n')
+                    out.write(format(fv(fh(fd(b))), '064b') + ' ' +
+                              format(fv(fh(fd(w))), '064b') + ' ' +
+                              winner + ' ' +
+                              str(format(fv(fh(fd(n))), '064b').find('1')) + '\n')
 
 
 if __name__ == '__main__':

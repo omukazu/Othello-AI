@@ -4,7 +4,8 @@ Predict next move from a board.
 
 ### Data Preparation
 1. Download records of an Othello game from the following URL
-https://www.skatgame.net/mburo/ggs/game-archive/Othello/
+
+    https://www.skatgame.net/mburo/ggs/game-archive/Othello/
 
 2. Cleanse the data
     ```
@@ -37,7 +38,8 @@ In Progress
 |data|size|
 | --- | ---: |
 |Train|10,000,000 pairs|
-|Dev|618,057 pairs|
+|Dev|624,169 pairs|
+
 (no duplicates between train and dev)
 
 | model | max validation accuracy |
