@@ -216,14 +216,13 @@ def print_board(current_black: int,
 
 
 def main():
-    parser = argparse.ArgumentParser(description='restore a othello game')
+    parser = argparse.ArgumentParser(description='replay a othello game')
     parser.add_argument('INPUT', help='path to input data')
     parser.add_argument('OUTPUT', help='path to output data of states')
     args = parser.parse_args()
 
-    """ short description
+    """　Replay a game based on board and move pairs
     
-    Replay a game based on board and move pairs.
     To calculate faster, we use bitboard.
     """
 

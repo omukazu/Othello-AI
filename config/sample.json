@@ -1,0 +1,21 @@
+{
+    "arguments":
+    {
+        "batch_size": 1024,
+        "epoch": 25,
+        "learning_rate": 1e-3,
+        "n_input_channel": 3,
+        "n_output_channel": 128,
+        "save_path": "sl_policy_network"
+    },
+    "data":
+    {
+        "train": "data/train.txt",
+        "valid": "data/valid.txt"
+    },
+    "debug":
+    {
+        "train": "debug/train.txt",
+        "valid": "debug/valid.txt"
+    }
+}

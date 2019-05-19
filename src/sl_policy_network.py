@@ -61,13 +61,13 @@ class SLPolicyNetwork(Chain):
                     ) -> Any:
         b = len(states)
 
-        black_masks = states[:, 0, :, :].reshape(b, -1).astype('uint64')                      # (b, 64)
-        black_channels = self.xp.left_shift(black_masks, self._reversed_indices).sum(axis=1)  # (b, )
-        white_masks = states[:, 1, :, :].reshape(b, -1).astype('uint64')                      # (b, 64)
-        white_channels = self.xp.left_shift(white_masks, self._reversed_indices).sum(axis=1)  # (b, )
-        is_blacks = states[:, 2, 0, 0].astype(bool)                                           # (b, )
+        black_masks = states[:, 0, :, :].reshape(b, -1).astype('uint64')                          # (b, 64)
+        hex_black_channels = self.xp.left_shift(black_masks, self._reversed_indices).sum(axis=1)  # (b, )
+        white_masks = states[:, 1, :, :].reshape(b, -1).astype('uint64')                          # (b, 64)
+        hex_white_channels = self.xp.left_shift(white_masks, self._reversed_indices).sum(axis=1)  # (b, )
+        is_blacks = states[:, 2, 0, 0].astype(bool)                                               # (b, )
 
-        hex_valid_mask = self.valid_move(black_channels, white_channels, is_blacks)           # (b, )
+        hex_valid_mask = self.valid_move(hex_black_channels, hex_white_channels, is_blacks)       # (b, )
         # (b, ) -> (b, ROW * COLUMN)
         bin_valid_mask = self.xp.bitwise_and(hex_valid_mask.reshape(-1, 1), self._bin_mask) / self._bin_mask
         bin_pass_mask = self.xp.logical_not(self.xp.any(bin_valid_mask, axis=1, keepdims=1)).astype(float)

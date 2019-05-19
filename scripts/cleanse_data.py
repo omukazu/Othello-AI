@@ -45,7 +45,10 @@ def main():
     -> [['RE[+2.000', 'B[C4', ... , 'W[G8'], ... , ] -> [['2', 'C4', ... , 'G8'], ... , ]
     -> [['2', 'C4', ... , 'G8'], ... , ] -> [['2', 'C4', ... , 'G8'], ... , ]
 
-    remove data does not start with initial state, contains flag(r,s,t) or invalid moves, or results in draw
+    not include records which
+    1. do not start with initial state 
+    2. contain flag(r,s,t) or invalid moves
+    3. result in draw
     """
     lines = [line[line.find('RE'):-2] for line in lines if initial_board in line]
     lines = [[e.split('/')[0] for i, e in enumerate(line.split(']')[:-1]) if i != 1]

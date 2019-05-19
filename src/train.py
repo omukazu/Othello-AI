@@ -9,7 +9,7 @@ from chainer.training import extensions
 import numpy as np
 
 from sl_policy_network import SLPolicyNetwork
-from utils import load_data, print_board
+from utils import load_data, print_board, translate
 
 
 def main():
@@ -61,15 +61,10 @@ def main():
         if args.gpu >= 0:
             state = cuda.to_cpu(state)
         print_board(state)
-        print(f'action : {action}')
-        print(f'prediction : {prediction}')
-
-    @chainer.training.make_extension()
-    def print_iter(_):
-        print(f'*** 100 iterate ***')
+        print(f'action : {translate(int(action))}')
+        print(f'prediction : {translate(int(prediction))}')
 
     trainer.extend(predict_next_move, trigger=(1, 'epoch'))
-    trainer.extend(print_iter, trigger=(100, 'iteration'))
 
     trainer.extend(extensions.Evaluator(valid_iter, model, device=args.gpu))
     trainer.extend(extensions.LogReport())
