@@ -1,6 +1,16 @@
 # Othello AI
 
-Predict next move from a board.
+## Play Mode
+
+You can play against AI
+
+```
+$ python src/game.py model/slpn.best_accuracy.npz --first
+```
+
+(Demo)
+
+![Demo](https://github.com/omukazu/Othello-AI/blob/images/image/demo.gif)
 
 ## Data Preparation
 1. Download records of an Othello game from the following URL
@@ -29,14 +39,14 @@ Each column shows
 3. the color of a player who makes a next move
 4. next move (expressed by an integer from -1 to 63)
 
-This script only extracts the winner's actions to select one from more than two valid moves.
+This script only extracts the winner's actions to select from more than one valid moves.
 
 ### Create Dataset
-Run the following command, and train/validation data will be created in the same directory as the input file.
+Run the following command, and train/validation data will be created in the same directory as an input file.
 ```
-$ python scripts/create_dataset.py data/restored.txt --train-size  100 --valid-size 10
+$ python scripts/create_dataset.py data/restored.txt --train-size {train-size} --valid-size {valid-size}
 ```
-You may fail to create dataset if too large size is specified.
+You may fail to create dataset if too large number is specified.
 
 ## Environment
 ```
@@ -59,8 +69,8 @@ $ python src/train.py config/sample.json [**kwargs]
 |Train|10,000,000 pairs|
 |Valid|624,169 pairs|
 
-(no duplicates between train and dev)
+(no duplicates between train and valid)
 
 | model | max validation accuracy |
 | --- | ---: |
-| supervised-learning policy network ||
+| supervised-learning policy network |0.632|

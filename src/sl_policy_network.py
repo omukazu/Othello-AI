@@ -125,7 +125,7 @@ class SLPolicyNetwork(Chain):
         return player, opponent
 
     def predict(self,
-                states: chainer.Variable  # (b, n_input_channel, ROW, COLUMN)
+                states: Any  # (b, n_input_channel, ROW, COLUMN)
                 ) -> chainer.Variable:
         with chainer.no_backprop_mode(), chainer.using_config('train', False):
             h = self.layer1(states)
@@ -140,5 +140,4 @@ class SLPolicyNetwork(Chain):
             policies = self.layer10(h)    # (b, ROW * COLUMN + 1)
             valid_mask = self.valid_moves(states)
             policies += valid_mask
-            prediction = self.xp.argmax(policies.data, axis=1)
-            return prediction
+            return policies

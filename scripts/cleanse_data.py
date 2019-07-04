@@ -1,11 +1,12 @@
 import argparse
 
+ROW = {'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'}
+COLUMN = {'1', '2', '3', '4', '5', '6', '7', '8'}
+
 
 def valid_moves(moves):
-    row = {'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'}
-    column = {'1', '2', '3', '4', '5', '6', '7', '8'}
     for move in moves:
-        if (move == 'PA') or (move[0] in row and move[1] in column):
+        if (move == 'PA') or (move[0] in ROW and move[1] in COLUMN):
             continue
         else:
             return False
@@ -41,9 +42,9 @@ def main():
 
     """
     ['GM ... W[G8];)', ... , ] -> ['RE[+2.000] ... W[G8]', ... , ]
-    -> ['RE[+2.000]BO[ ... W[G8]', ... , ] -> [['RE[+2.000', 'B[C4' ... , 'W[G8'], ... , ]
-    -> [['RE[+2.000', 'B[C4', ... , 'W[G8'], ... , ] -> [['2', 'C4', ... , 'G8'], ... , ]
-    -> [['2', 'C4', ... , 'G8'], ... , ] -> [['2', 'C4', ... , 'G8'], ... , ]
+    -> ['RE[+2.000]BO[ ... W[G8]', ... , ] -> [['RE[+2.000', 'B[C4' ... , 'W[G8', ... , ]
+    -> [['RE[+2.000', 'B[C4', ... , 'W[G8', ... , ] -> [['2', 'C4', ... , 'G8', ... , ]
+    -> [['2', 'C4', ... , 'G8', ... , ] -> [['2', 'C4', ... , 'G8', ... , ]
 
     not include records which
     1. do not start with initial state 

@@ -4,8 +4,6 @@ from typing import Tuple
 
 from progressbar import ProgressBar
 
-ROW = 8
-COLUMN = 8
 PASS = 0
 TABLE = {'A': '8', 'B': '4', 'C': '2', 'D': '1', 'E': '8', 'F': '4', 'G': '2', 'H': '1',
          '1': 0, '2': 1, '3': 2, '4': 3, '5': 4, '6': 5, '7': 6, '8': 7, }
@@ -24,9 +22,13 @@ def translate(move: str  # e.g. 'C3'
         return int(''.join(translated), 16)
 
 
-HORIZONTAL_MASK = 0x00ffffffffffff00
-VERTICAL_MASK = 0x7e7e7e7e7e7e7e7e
-SQUARE_MASK = 0x007e7e7e7e7e7e00
+def which_turn(is_black: bool,
+               current_black: int,
+               current_white: int
+               ) -> Tuple[int, int]:
+    player = current_black if is_black else current_white
+    opponent = current_white if is_black else current_black
+    return player, opponent
 
 
 class Direction(IntEnum):
@@ -36,13 +38,9 @@ class Direction(IntEnum):
     UPPERLEFT = 0x9
 
 
-def which_turn(is_black: bool,
-               current_black: int,
-               current_white: int
-               ) -> Tuple[int, int]:
-    player = current_black if is_black else current_white
-    opponent = current_white if is_black else current_black
-    return player, opponent
+HORIZONTAL_MASK = 0x00ffffffffffff00
+VERTICAL_MASK = 0x7e7e7e7e7e7e7e7e
+SQUARE_MASK = 0x007e7e7e7e7e7e00
 
 
 def valid(is_black: bool,

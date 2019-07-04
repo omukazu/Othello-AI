@@ -3,7 +3,7 @@ from typing import List, Tuple
 import numpy as np
 from progressbar import ProgressBar
 
-from constants import ROW, COLUMN, COLUMN_INVERSED_TABLE
+from constants import ROW, COLUMN, COLUMN_INVERSE_TABLE
 
 
 def transform(b: str,  # 64bits
@@ -29,7 +29,7 @@ def load_data(path: str
 def translate(index):
     row = index // 8
     column = index % 8
-    return COLUMN_INVERSED_TABLE[column] + str(row + 1)
+    return COLUMN_INVERSE_TABLE[column] + str(row + 1)
 
 
 def print_board(states: np.array  # (3, 8, 8)

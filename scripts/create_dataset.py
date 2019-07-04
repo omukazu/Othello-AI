@@ -22,8 +22,8 @@ def main():
     assert len(target) >= args.valid_size, 'could not retrieve valid data due to too large valid size specified'
     valid = target[:args.valid_size]
 
-    train_path = p.join(dir_name, 'atrain.txt')
-    valid_path = p.join(dir_name, 'avalid.txt')
+    train_path = p.join(dir_name, 'train.txt')
+    valid_path = p.join(dir_name, 'valid.txt')
 
     with open(train_path, "w") as tra:
         for line in train:

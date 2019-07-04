@@ -3,6 +3,7 @@ import json
 from argparse import RawTextHelpFormatter
 
 import chainer
+import chainer.functions as F
 from chainer import iterators, training
 from chainer.backends import cuda
 from chainer.training import extensions
@@ -58,11 +59,9 @@ def main():
         if args.gpu >= 0:
             state = cuda.to_gpu(state)
         prediction = model.predict(state.reshape(1, n_channel, row, column))
-        if args.gpu >= 0:
-            state = cuda.to_cpu(state)
         print_board(state)
         print(f'action : {translate(int(action))}')
-        print(f'prediction : {translate(int(prediction))}')
+        print(f'prediction : {translate(int(np.argmax(F.softmax(prediction).data, axis=1)))}')
 
     trainer.extend(predict_next_move, trigger=(1, 'epoch'))
 
@@ -70,13 +69,14 @@ def main():
     trainer.extend(extensions.LogReport())
     trainer.extend(extensions.PrintReport(['epoch', 'main/loss', 'main/accuracy',
                                            'validation/main/loss', 'validation/main/accuracy', 'elapsed_time']))
-    trainer.extend(extensions.snapshot_object(model, 'slpn.epoch{.updater.epoch}.npz'), trigger=(10, 'epoch'))
-    save_trigger_for_accuracy = chainer.training.triggers.MaxValueTrigger(key='validation/main/accuracy',
+    if args.debug is False:
+        trainer.extend(extensions.snapshot_object(model, 'slpn.epoch{.updater.epoch}.npz'), trigger=(10, 'epoch'))
+        save_trigger_for_accuracy = chainer.training.triggers.MaxValueTrigger(key='validation/main/accuracy',
+                                                                              trigger=(1, 'epoch'))
+        trainer.extend(extensions.snapshot_object(model, 'slpn.best_accuracy.npz'), trigger=save_trigger_for_accuracy)
+        save_trigger_for_loss = chainer.training.triggers.MinValueTrigger(key='validation/main/loss',
                                                                           trigger=(1, 'epoch'))
-    trainer.extend(extensions.snapshot_object(model, 'slpn.best_accuracy.npz'), trigger=save_trigger_for_accuracy)
-    save_trigger_for_loss = chainer.training.triggers.MinValueTrigger(key='validation/main/loss',
-                                                                      trigger=(1, 'epoch'))
-    trainer.extend(extensions.snapshot_object(model, 'slpn.best_loss.npz'), trigger=save_trigger_for_loss)
+        trainer.extend(extensions.snapshot_object(model, 'slpn.best_loss.npz'), trigger=save_trigger_for_loss)
 
     print('*** start training ***')
     trainer.run()
