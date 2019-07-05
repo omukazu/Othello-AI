@@ -189,9 +189,20 @@ class Game:
         return player, opponent
 
 
+def invalid_input(_input: str
+                  ) -> bool:
+    if len(_input) == 2:
+        return _input[1] in ROW_TABLE.keys() and _input[0] in COLUMN_TABLE.keys()
+    elif _input == 'PASS':
+        return True
+    return False
+
+
 def translate(_input: str  # e.g. 'C4'
-              ) -> Any:
-    try:
+              ) -> Tuple[Any, int]:
+    if _input == 'PASS':
+        return 'PASS', 64
+    else:
         row = ROW_TABLE[_input[1]]
         column = COLUMN_TABLE[_input[0]]
 
@@ -201,8 +212,6 @@ def translate(_input: str  # e.g. 'C4'
             index += 1
         translated[index] = TABLE[_input[0]]
         return int(''.join(map(str, translated)), 16), row * ROW + column
-    except KeyError:
-        return ('PASS', 64) if _input == 'PASS' else ('Invalid', -1)
 
 
 def index_to_move(index: int
@@ -248,6 +257,13 @@ def main():
         game.print_board(is_black, memory, valid_moves)
         print('input > ', end='')
         _input = input()
+
+        if invalid_input(_input):
+            pass
+        else:
+            print('invalid input')
+            continue
+
         next_move, next_move_index = translate(_input)
         if next_move == 'PASS':
             state = game.get_state(not is_black)
@@ -261,8 +277,6 @@ def main():
             else:
                 print('end')
                 break
-        elif next_move == 'Invalid':
-            print('Invalid input1')
         elif valid_moves[next_move_index]:
             reversible_mask = game.reversible(next_move, is_black)
             game.reverse(next_move, is_black, reversible_mask)
@@ -277,7 +291,7 @@ def main():
                 game.reverse(next_opponent_move, not is_black, reversible_mask)
                 memory = int(reversible_mask+next_opponent_move)
         else:
-            print('Invalid input2')
+            print('can not action')
 
 
 if __name__ == '__main__':
