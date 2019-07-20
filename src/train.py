@@ -41,7 +41,7 @@ def main():
     model = SLPolicyNetwork(n_input_channel=n_input_channel,
                             n_output_channel=n_output_channel)
     if args.gpu >= 0:
-        chainer.backends.cuda.get_device_from_id(args.gpu).use()
+        cuda.get_device_from_id(args.gpu).use()
         model.to_gpu(args.gpu)
     model.set_cache()
 

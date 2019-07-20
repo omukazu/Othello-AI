@@ -10,8 +10,8 @@
     },
     "data":
     {
-        "train": "data/train.txt",
-        "valid": "data/valid.txt"
+        "train": "/mnt/hinoki/omura/othello_data/train.txt",
+        "valid": "/mnt/hinoki/omura/othello_data/valid.txt"
     },
     "debug":
     {

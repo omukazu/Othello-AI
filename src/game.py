@@ -117,7 +117,7 @@ class Game:
         return one_valid_mask | the_other_valid_mask
 
     def reversible(self,
-                   next_move: np.array,
+                   next_move: int,
                    is_black: bool,
                    ) -> np.array:
         player, opponent = self.which_turn(is_black, self.black, self.white)
